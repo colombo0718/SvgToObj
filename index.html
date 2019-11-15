@@ -10,6 +10,9 @@
 				background-color: #b0b0b0;
 			}
 		</style>
+		<script src="three.js"></script>
+		<script src="csg.js"></script>
+		<script src="ThreeCSG.js"></script>
 	</head>
 
 	<body>
@@ -45,24 +48,16 @@
 				camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 5000 );
 				camera.position.set( 0, 0, 200 );
 
-				//
-
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				container.appendChild( renderer.domElement );
-
-				//
+				container.appendChild( renderer.domElement )
 
 				var controls = new OrbitControls( camera, renderer.domElement );
 				controls.screenSpacePanning = true;
 
-				//
-
-				stats = new Stats();
-				container.appendChild( stats.dom );
-
-				//
+				// stats = new Stats();
+				// container.appendChild( stats.dom );
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
@@ -103,120 +98,161 @@
 
 				} ).name( 'SVG File' ).onChange( update );
 
-				// gui.add( guiData, 'drawStrokes' ).name( 'Draw strokes' ).onChange( update );
-
-				// gui.add( guiData, 'drawFillShapes' ).name( 'Draw fill shapes' ).onChange( update );
-
-				// gui.add( guiData, 'strokesWireframe' ).name( 'Wireframe strokes' ).onChange( update );
-
-				// gui.add( guiData, 'fillShapesWireframe' ).name( 'Wireframe fill shapes' ).onChange( update );
-
 				function update() {
 
 					loadSVG( guiData.currentURL );
 
 				}
-
 			}
 
 			function loadSVG( url ) {
 
-				//
-
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0xb0b0b0 );
-
-				//
 
 				var helper = new THREE.GridHelper( 1000, 10);
 				helper.rotation.x = Math.PI / 2;
 				scene.add( helper );
 
-				//
+				var ambientLight = new THREE.AmbientLight( 0xcccccc, 1);
+				scene.add( ambientLight );
+				
+				var light = new THREE.PointLight( 0xffffff);
+				light.position.set( 0, 0, 50 );
+				scene.add( light );
 
 				var loader = new SVGLoader();
-
 				loader.load( url, function ( data ) {
 					console.log(data)
 					var paths = data.paths;
-					var group = new THREE.Group();
-					// group.scale.y *= - 1;
+					var space2d = new THREE.Group();
+					space2d.scale.y *= - 1;
+					var space3d = new THREE.Group();
+					space3d.scale.y *= - 1;
 
+					var allPoints=[]
+					var last= new THREE.Vector2(1000,1000)
+					var head=new THREE.Vector2(1000,1000)
 					for ( var i = 0; i < paths.length; i ++ ) {
-
 						var path = paths[ i ];
-						var strokeColor = path.userData.style.stroke;
 
-						if ( guiData.drawStrokes && strokeColor !== undefined && strokeColor !== 'none' ) {
-							var material = new THREE.MeshBasicMaterial( {
-								color: new THREE.Color().setStyle( strokeColor ),
-								// opacity: path.userData.style.strokeOpacity,
-								// transparent: path.userData.style.strokeOpacity < 1,
-								// side: THREE.DoubleSide,
-								// depthWrite: false,
-								// wireframe: guiData.strokesWireframe
-							} );
-							// console.log(guiData.strokesWireframe)
-							for ( var j = 0, jl = path.subPaths.length; j < jl; j ++ ) {
-
-
-								var gty = new THREE.Geometry();
-								var subPath = path.subPaths[ j ];
-								var points=subPath.getPoints()
-								points.forEach(function(point){
-									// console.log(point)
-									// console.log(point.x,point.y)
-									var p0=new THREE.Vector3(point.x,point.y,0);
-									var p3=new THREE.Vector3(point.x,point.y,3);
-									// console.log(p0,p3)
-									gty.vertices.push(p0,p3)
-								})
-								// console.log(gty.vertices.length-2)
-								// console.log(gty.vertices)
-
-								for(var n=0;n<gty.vertices.length-2;n++){
-									// console.log(n)
-									var fa1=new THREE.Face3(n,n+1,n+2)
-									var fa2=new THREE.Face3(n,n+2,n+1)
-									// console.log(fa)
-									// fa1.compute()
-									gty.faces.push(fa1);
-									gty.faces.push(fa2);
-								}
-								gty.computeFaceNormals()
-								console.log(gty)
-								
-								var mtl = new THREE.MeshBasicMaterial( { 
-									color: 0xff0000,
-									transparent:true,
-									opacity:.5
-								} );
-								var mesh = new THREE.Mesh(gty,mtl);
-								console.log(mesh)
-
-								// var mesh = new THREE.ConvexGeometry(gty.vertices);
-								scene.add( mesh );
-
-
-
-
-								var geometry = SVGLoader.pointsToStroke( subPath.getPoints(), path.userData.style );
-								// console.log(geometry )
-								if ( geometry ) {
-
-									var mesh = new THREE.Mesh( geometry, material );
-
-									group.add( mesh );
-
-								}
-
+						var material = new THREE.MeshBasicMaterial( {
+							color: new THREE.Color(0x000000),
+						} );
+						for ( var j = 0, jl = path.subPaths.length; j < jl; j ++ ) {
+							var subPath = path.subPaths[ j ];
+							var geometry = SVGLoader.pointsToStroke( subPath.getPoints(), path.userData.style );
+							if ( geometry ) {
+								var mesh = new THREE.Mesh( geometry, material );
+								space2d.add( mesh );
 							}
-
+							// collecting all the point in svg
+							var points=subPath.getPoints()
+							var gty = new THREE.Geometry();
+							points.forEach(function(point){
+								var p0=new THREE.Vector3(point.x,point.y,0);
+								if(last.x!=p0.x||last.y!=p0.y){
+									allPoints.push(p0)
+								}
+								last=point
+							})
 						}
-
 					}
+					var compon=[]
+					// compon[0]=[]
+					var close=true,count=0
+					var x0=-100,x1=-100,y0=-100,y1=-100
 
-					scene.add( group );
+					console.log(allPoints)
+					for(var i=0;i<allPoints.length;i++){
+						var nowP=allPoints[i]
+						if(close==true){
+							console.log(x0,x1,y0,y1,nowP)
+							// check new head point in boundary or not
+							if(nowP.x<x0 || nowP.x>x1 || nowP.y<y0 || nowP.y>y1){
+								// start a new component
+								compon[compon.length]=[]
+								x0=allPoints[i].x
+								x1=allPoints[i].x
+								y0=allPoints[i].y
+								y1=allPoints[i].y
+							}
+							console.log('update')
+							head=allPoints[i]
+							close=false
+						}
+						// insert new point and update box range
+						compon[compon.length-1].push(allPoints[i])
+						if(allPoints[i].x<x0){x0=allPoints[i].x}
+						if(allPoints[i].x>x1){x1=allPoints[i].x}
+						if(allPoints[i].y<y0){y0=allPoints[i].y}
+						if(allPoints[i].y>y1){y1=allPoints[i].y}
+						
+						// test line close or not 
+						// console.log(dx,dy)
+						var dx=Math.abs(head.x-allPoints[i].x)
+						var dy=Math.abs(head.y-allPoints[i].y)
+						if(dx<.1&&dy<.1){
+							count+=1
+							if(count==2){count=0;close=true}
+						}
+					}
+					console.log(compon)
+
+
+					compon.forEach(function(line){
+						var gty = new THREE.Geometry();
+						gty.setFromPoints(line)
+
+						var shape = new THREE.Shape();
+						shape.moveTo(gty.vertices[0].x,gty.vertices[0].y);
+						line.forEach(function(p){
+							shape.lineTo(p.x,p.y);
+						})
+						
+						var extrudeSettings = {
+							steps: 1,
+							depth: 3,
+							bevelEnabled: false
+						};
+
+						var randomColor=new THREE.Color( Math.random(), Math.random(), Math.random() );
+						var geometry = new THREE.ExtrudeBufferGeometry( shape, extrudeSettings );
+						var material = new THREE.MeshLambertMaterial( { color:randomColor} );
+						var mesh = new THREE.Mesh( geometry, material ) ;
+						space3d.add( mesh );
+
+						// var cubeBSP = new ThreeBSP(geometry );
+						console.log(geometry , THREE.Geometry)
+						// console.log(cubeBSP)
+					})
+
+
+
+					// var gty = new THREE.Geometry();
+					// gty.setFromPoints(allPoints)
+					// // gty.mergeVertices ()
+					// console.log(gty.vertices)
+
+					// var shape = new THREE.Shape();
+					// shape.moveTo(gty.vertices[0].x,gty.vertices[0].y);
+					// gty.vertices.forEach(function(vtx){
+					// 	shape.lineTo(vtx.x,vtx.y);
+					// })
+					
+					// var extrudeSettings = {
+					// 	steps: 1,
+					// 	depth: 3,
+					// 	bevelEnabled: false
+					// };
+
+					// var geometry = new THREE.ExtrudeBufferGeometry( shape, extrudeSettings );
+					// var material = new THREE.MeshBasicMaterial( { color: 0x00ffff } );
+					// var mesh = new THREE.Mesh( geometry, material ) ;
+					// space3d.add( mesh );
+
+					scene.add( space2d );
+					scene.add( space3d );
 
 				} );
 
@@ -236,7 +272,7 @@
 				requestAnimationFrame( animate );
 
 				render();
-				stats.update();
+				// stats.update();
 
 			}
 
