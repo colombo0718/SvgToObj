@@ -24,8 +24,8 @@
 
 		<script type="module">
 
-			import * as THREE from './three.module.js';
-
+			// import * as THREE from './three.module.js';
+			// import { ThreeBSP } from './ThreeCSG.js';
 			import Stats from './stats.module.js';
 
 			import { GUI } from './dat.gui.module.js';
@@ -169,14 +169,14 @@
 						if(close==true){
 							console.log(x0,x1,y0,y1,nowP)
 							// check new head point in boundary or not
-							if(nowP.x<x0 || nowP.x>x1 || nowP.y<y0 || nowP.y>y1){
+							// if(nowP.x<x0 || nowP.x>x1 || nowP.y<y0 || nowP.y>y1){
 								// start a new component
 								compon[compon.length]=[]
 								x0=allPoints[i].x
 								x1=allPoints[i].x
 								y0=allPoints[i].y
 								y1=allPoints[i].y
-							}
+							// }
 							console.log('update')
 							head=allPoints[i]
 							close=false
@@ -199,7 +199,7 @@
 					}
 					console.log(compon)
 
-
+					var manyBSP=[]
 					compon.forEach(function(line){
 						var gty = new THREE.Geometry();
 						gty.setFromPoints(line)
@@ -220,12 +220,33 @@
 						var geometry = new THREE.ExtrudeBufferGeometry( shape, extrudeSettings );
 						var material = new THREE.MeshLambertMaterial( { color:randomColor} );
 						var mesh = new THREE.Mesh( geometry, material ) ;
-						space3d.add( mesh );
+						console.log(mesh)
+						// space3d.add( mesh );
 
-						// var cubeBSP = new ThreeBSP(geometry );
-						console.log(geometry , THREE.Geometry)
-						// console.log(cubeBSP)
+
+
+						var realGty= new THREE.Geometry();
+						realGty.fromBufferGeometry(geometry)
+
+
+						console.log( realGty )
+						var cubeBSP = new ThreeBSP(realGty );
+						console.log(cubeBSP)
+						manyBSP.push(cubeBSP)
 					})
+
+					var cutBSP=manyBSP[0].subtract(manyBSP[1])
+					var randomColor=new THREE.Color( Math.random(), Math.random(), Math.random() );
+					var material = new THREE.MeshLambertMaterial( { color:randomColor} );
+					console.log(cutBSP)
+					var newMesh=cutBSP.toMesh( material);
+					console.log(newMesh)
+
+					space3d.add( newMesh);
+
+
+
+
 
 
 
