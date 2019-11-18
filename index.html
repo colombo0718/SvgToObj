@@ -43,8 +43,6 @@
 
 				var container = document.getElementById( 'container' );
 
-				//
-
 				camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 5000 );
 				camera.position.set( 0, 0, 200 );
 
@@ -56,52 +54,26 @@
 				var controls = new OrbitControls( camera, renderer.domElement );
 				controls.screenSpacePanning = true;
 
-				// stats = new Stats();
-				// container.appendChild( stats.dom );
-
 				window.addEventListener( 'resize', onWindowResize, false );
 
 				guiData = {
-					currentURL: './line1.svg',
-					drawFillShapes: true,
-					drawStrokes: true,
-					fillShapesWireframe: false,
-					strokesWireframe: false
+					currentURL: './colorcircle.svg'
 				};
-
 				loadSVG( guiData.currentURL );
-
 				createGUI();
-
 			}
 
 			function createGUI() {
-
 				if ( gui ) gui.destroy();
-
 				gui = new GUI( { width: 350 } );
-
 				gui.add( guiData, 'currentURL', {
-
-					"Tiger": './tiger.svg',
-					"Three.js": './threejs.svg',
-					"Joins and caps": './lineJoinsAndCaps.svg',
-					"Hexagon": './hexagon.svg',
-					"Test 1": './1.svg',
-					"Test 2": './2.svg',
-					"Test 3": './3.svg',
-					"Test 4": './4.svg',
 					"Test 5": './square.svg',
 					"Test 6": './colorcircle.svg',
 					"Test 7": './littlechiken.svg',
 					"Test 8": './line1.svg'
-
 				} ).name( 'SVG File' ).onChange( update );
-
 				function update() {
-
 					loadSVG( guiData.currentURL );
-
 				}
 			}
 
@@ -123,34 +95,28 @@
 
 				var loader = new SVGLoader();
 				loader.load( url, function ( data ) {
-					console.log(data)
 					var paths = data.paths;
 					var space2d = new THREE.Group();
 					space2d.scale.y *= - 1;
 					var space3d = new THREE.Group();
 					space3d.scale.y *= - 1;
+					scene.add( space2d );
+					scene.add( space3d );
 
+
+					
 					var allPoints=[]
-					var last= new THREE.Vector2(1000,1000)
+					var last=new THREE.Vector2(1000,1000)
 					var head=new THREE.Vector2(1000,1000)
 					for ( var i = 0; i < paths.length; i ++ ) {
 						var path = paths[ i ];
-
-						var material = new THREE.MeshBasicMaterial( {
-							color: new THREE.Color(0x000000),
-						} );
 						for ( var j = 0, jl = path.subPaths.length; j < jl; j ++ ) {
-							var subPath = path.subPaths[ j ];
-							var geometry = SVGLoader.pointsToStroke( subPath.getPoints(), path.userData.style );
-							if ( geometry ) {
-								var mesh = new THREE.Mesh( geometry, material );
-								space2d.add( mesh );
-							}
 							// collecting all the point in svg
+							var subPath = path.subPaths[ j ];
 							var points=subPath.getPoints()
-							var gty = new THREE.Geometry();
 							points.forEach(function(point){
 								var p0=new THREE.Vector3(point.x,point.y,0);
+								// connect the same position
 								if(last.x!=p0.x||last.y!=p0.y){
 									allPoints.push(p0)
 								}
@@ -158,16 +124,27 @@
 							})
 						}
 					}
+
+					var material = new THREE.LineBasicMaterial({color: 0xff0000});
+					var geometry = new THREE.Geometry();
+					allPoints.forEach(function(point){
+						geometry.vertices.push(point);
+					})
+					
+					var line = new THREE.Line( geometry, material );
+					space2d.add( line );
+
+
 					var compon=[]
 					// compon[0]=[]
 					var close=true,count=0
 					var x0=-100,x1=-100,y0=-100,y1=-100
 
-					console.log(allPoints)
+					// console.log(allPoints)
 					for(var i=0;i<allPoints.length;i++){
 						var nowP=allPoints[i]
 						if(close==true){
-							console.log(x0,x1,y0,y1,nowP)
+							// console.log(x0,x1,y0,y1,nowP)
 							// check new head point in boundary or not
 							// if(nowP.x<x0 || nowP.x>x1 || nowP.y<y0 || nowP.y>y1){
 								// start a new component
@@ -177,7 +154,7 @@
 								y0=allPoints[i].y
 								y1=allPoints[i].y
 							// }
-							console.log('update')
+							// console.log('update')
 							head=allPoints[i]
 							close=false
 						}
@@ -220,10 +197,8 @@
 						var geometry = new THREE.ExtrudeBufferGeometry( shape, extrudeSettings );
 						var material = new THREE.MeshLambertMaterial( { color:randomColor} );
 						var mesh = new THREE.Mesh( geometry, material ) ;
-						console.log(mesh)
-						// space3d.add( mesh );
-
-
+						// console.log(mesh)
+						space3d.add( mesh );
 
 						var realGty= new THREE.Geometry();
 						realGty.fromBufferGeometry(geometry)
@@ -238,42 +213,10 @@
 					var cutBSP=manyBSP[0].subtract(manyBSP[1])
 					var randomColor=new THREE.Color( Math.random(), Math.random(), Math.random() );
 					var material = new THREE.MeshLambertMaterial( { color:randomColor} );
-					console.log(cutBSP)
 					var newMesh=cutBSP.toMesh( material);
-					console.log(newMesh)
 
-					space3d.add( newMesh);
+					scene.add( newMesh);
 
-
-
-
-
-
-
-					// var gty = new THREE.Geometry();
-					// gty.setFromPoints(allPoints)
-					// // gty.mergeVertices ()
-					// console.log(gty.vertices)
-
-					// var shape = new THREE.Shape();
-					// shape.moveTo(gty.vertices[0].x,gty.vertices[0].y);
-					// gty.vertices.forEach(function(vtx){
-					// 	shape.lineTo(vtx.x,vtx.y);
-					// })
-					
-					// var extrudeSettings = {
-					// 	steps: 1,
-					// 	depth: 3,
-					// 	bevelEnabled: false
-					// };
-
-					// var geometry = new THREE.ExtrudeBufferGeometry( shape, extrudeSettings );
-					// var material = new THREE.MeshBasicMaterial( { color: 0x00ffff } );
-					// var mesh = new THREE.Mesh( geometry, material ) ;
-					// space3d.add( mesh );
-
-					scene.add( space2d );
-					scene.add( space3d );
 
 				} );
 
